@@ -126,8 +126,11 @@ bool output_triggers_assignment(Output *output, struct Workspace_Assignment *ass
  * memory and initializing the data structures correctly).
  *
  */
-Con *workspace_get(const char *num, bool *created) {
+Con *workspace_get(const char *num) {
     Con *workspace = get_existing_workspace_by_name(num);
+    if (workspace) {
+        return workspace;
+    }
 
     if (workspace == NULL) {
         LOG("Creating new workspace \"%s\"\n", num);
@@ -183,6 +186,27 @@ Con *workspace_get(const char *num, bool *created) {
     } else if (created != NULL) {
         *created = false;
     }
+
+    /* No parent because we need to attach this container after setting its
+     * type. con_attach will handle CT_WORKSPACEs differently. */
+    workspace = con_new(NULL, NULL);
+
+    char *name;
+    sasprintf(&name, "[i3 con] workspace %s", num);
+    x_set_name(workspace, name);
+    free(name);
+
+    FREE(workspace->name);
+    workspace->name = sstrdup(num);
+    workspace->workspace_layout = config.default_layout;
+    workspace->num = parsed_num;
+    workspace->type = CT_WORKSPACE;
+
+    con_attach(workspace, output_get_content(output), false);
+    _workspace_apply_default_orientation(workspace);
+
+    ipc_send_workspace_event("init", workspace, NULL);
+    ewmh_update_desktop_properties();
 
     return workspace;
 }
@@ -577,9 +601,7 @@ void workspace_show(Con *workspace) {
  *
  */
 void workspace_show_by_name(const char *num) {
-    Con *workspace;
-    workspace = workspace_get(num, NULL);
-    workspace_show(workspace);
+    workspace_show(workspace_get(num));
 }
 
 /*
@@ -846,10 +868,7 @@ Con *workspace_back_and_forth_get(void) {
         return NULL;
     }
 
-    Con *workspace;
-    workspace = workspace_get(previous_workspace_name, NULL);
-
-    return workspace;
+    return workspace_get(previous_workspace_name);
 }
 
 static bool get_urgency_flag(Con *con) {
@@ -1036,7 +1055,7 @@ void workspace_move_to_output(Con *ws, Output *output) {
 
             /* so create the workspace referenced to by this assignment */
             DLOG("Creating workspace from assignment %s.\n", assignment->name);
-            workspace_get(assignment->name, NULL);
+            workspace_get(assignment->name);
             used_assignment = true;
             break;
         }
