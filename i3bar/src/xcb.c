@@ -1621,6 +1621,8 @@ void destroy_window(i3_output *output) {
         return;
     }
 
+    kick_tray_clients(output);
+
     draw_util_surface_free(xcb_connection, &(output->bar));
     draw_util_surface_free(xcb_connection, &(output->buffer));
     draw_util_surface_free(xcb_connection, &(output->statusline_buffer));
