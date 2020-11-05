@@ -134,59 +134,27 @@ Con *workspace_get(const char *num) {
         return workspace;
     }
 
-    if (workspace == NULL) {
-        LOG("Creating new workspace \"%s\"\n", num);
-        gaps_t gaps = (gaps_t){0, 0, 0, 0, 0};
+    LOG("Creating new workspace \"%s\"\n", num);
+    gaps_t gaps = (gaps_t){0, 0, 0, 0, 0};
 
-        /* We set workspace->num to the number if this workspace’s name begins
-         * with a positive number. Otherwise it’s a named ws and num will be
-         * -1. */
-        long parsed_num = ws_name_to_number(num);
+    /* We set workspace->num to the number if this workspace’s name begins with
+     * a positive number. Otherwise it’s a named ws and num will be 1. */
+    const long parsed_num = ws_name_to_number(num);
 
-        struct Workspace_Assignment *assignment;
-        TAILQ_FOREACH (assignment, &ws_assignments, ws_assignments) {
-            if (strcmp(assignment->name, num) == 0) {
-                gaps = assignment->gaps;
-                break;
-            } else if (parsed_num != -1 && name_is_digits(assignment->name) && ws_name_to_number(assignment->name) == parsed_num) {
-                gaps = assignment->gaps;
-            }
+    struct Workspace_Assignment *assignment;
+    TAILQ_FOREACH (assignment, &ws_assignments, ws_assignments) {
+        if (strcmp(assignment->name, num) == 0) {
+            gaps = assignment->gaps;
+            break;
+        } else if (parsed_num != -1 && name_is_digits(assignment->name) && ws_name_to_number(assignment->name) == parsed_num) {
+            gaps = assignment->gaps;
         }
+    }
 
-        Con *output = get_assigned_output(num, parsed_num);
-        /* if an assignment is not found, we create this workspace on the current output */
-        if (!output) {
-            output = con_get_output(focused);
-        }
-
-        Con *content = output_get_content(output);
-        LOG("got output %p with content %p\n", output, content);
-        /* We need to attach this container after setting its type. con_attach
-         * will handle CT_WORKSPACEs differently */
-        workspace = con_new(NULL, NULL);
-        char *name;
-        sasprintf(&name, "[i3 con] workspace %s", num);
-        x_set_name(workspace, name);
-        free(name);
-        workspace->type = CT_WORKSPACE;
-        FREE(workspace->name);
-        workspace->name = sstrdup(num);
-        workspace->workspace_layout = config.default_layout;
-        workspace->num = parsed_num;
-        LOG("num = %d\n", workspace->num);
-        workspace->gaps = gaps;
-
-        workspace->parent = content;
-        _workspace_apply_default_orientation(workspace);
-
-        con_attach(workspace, content, false);
-
-        ipc_send_workspace_event("init", workspace, NULL);
-        ewmh_update_desktop_properties();
-        if (created != NULL)
-            *created = true;
-    } else if (created != NULL) {
-        *created = false;
+    Con *output = get_assigned_output(num, parsed_num);
+    /* if an assignment is not found, we create this workspace on the current output */
+    if (!output) {
+        output = con_get_output(focused);
     }
 
     /* No parent because we need to attach this container after setting its
@@ -203,6 +171,7 @@ Con *workspace_get(const char *num) {
     workspace->workspace_layout = config.default_layout;
     workspace->num = parsed_num;
     workspace->type = CT_WORKSPACE;
+    workspace->gaps = gaps;
 
     con_attach(workspace, output_get_content(output), false);
     _workspace_apply_default_orientation(workspace);
