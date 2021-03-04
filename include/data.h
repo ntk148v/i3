@@ -433,6 +433,9 @@ struct Window {
      * for_window. */
     char *role;
 
+    /** WM_CLIENT_MACHINE of the window */
+    char *machine;
+
     /** Flag to force re-rendering the decoration upon changes */
     bool name_x_changed;
 
@@ -495,6 +498,9 @@ struct Window {
     /* Time when the window became managed. Used to determine whether a window
      * should be swallowed after initial management. */
     time_t managed_since;
+
+    /* The window has been swallowed. */
+    bool swallowed;
 };
 
 /**
@@ -516,6 +522,7 @@ struct Match {
     struct regex *mark;
     struct regex *window_role;
     struct regex *workspace;
+    struct regex *machine;
     xcb_atom_t window_type;
     enum {
         U_DONTCHECK = -1,
@@ -768,6 +775,6 @@ struct Con {
 
     /* The colormap for this con if a custom one is used. */
     xcb_colormap_t colormap;
-    
+
     uint32_t border_radius;
 };

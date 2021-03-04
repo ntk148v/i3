@@ -6,7 +6,7 @@
 project(
   'i3',
   'c',
-  version: '4.18.1',
+    version: '4.19.1',
   default_options: [
     'c_std=c11',
     'warning_level=1',  # enable all warnings (-Wall)
@@ -325,6 +325,7 @@ ev_dep = cc.find_library('ev')
 inc = include_directories('include')
 
 libi3srcs = [
+  'libi3/create_socket.c',
   'libi3/dpi.c',
   'libi3/draw_util.c',
   'libi3/fake_configure_notify.c',
@@ -341,11 +342,13 @@ libi3srcs = [
   'libi3/ipc_recv_message.c',
   'libi3/ipc_send_message.c',
   'libi3/is_debug_build.c',
+  'libi3/path_exists.c',
   'libi3/resolve_tilde.c',
   'libi3/root_atom_contents.c',
   'libi3/safewrappers.c',
   'libi3/string.c',
   'libi3/ucs2_conversion.c',
+  'libi3/nonblock.c',
 ]
 
 if not cdata.get('HAVE_STRNDUP')
@@ -514,6 +517,7 @@ executable(
     'i3-config-wizard/i3-config-wizard-atoms.xmacro.h',
     'i3-config-wizard/main.c',
     'i3-config-wizard/xcb.h',
+    config_parser,
   ],
   install: true,
   include_directories: include_directories('include', 'i3-config-wizard'),
@@ -642,7 +646,7 @@ if get_option('docs')
       '@OUTPUT@',
     ],
     install: true,
-    install_dir: join_paths(get_option('datadir'), 'doc', 'i3'),
+    install_dir: docdir,
   )
 
   custom_target(
@@ -655,7 +659,7 @@ if get_option('docs')
       '@OUTPUT@',
     ],
     install: true,
-    install_dir: join_paths(get_option('datadir'), 'doc', 'i3'),
+    install_dir: docdir,
   )
 endif
 
@@ -669,7 +673,10 @@ executable(
 
 executable(
   'test.commands_parser',
-  'src/commands_parser.c',
+  [
+    'src/commands_parser.c',
+    command_parser,
+  ],
   include_directories: inc,
   c_args: '-DTEST_PARSER',
   dependencies: common_deps,
@@ -678,7 +685,10 @@ executable(
 
 executable(
   'test.config_parser',
-  'src/config_parser.c',
+  [
+    'src/config_parser.c',
+    config_parser,
+  ],
   include_directories: inc,
   c_args: '-DTEST_PARSER',
   dependencies: common_deps,

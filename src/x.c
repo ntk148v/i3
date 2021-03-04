@@ -644,6 +644,9 @@ void x_draw_decoration(Con *con) {
 
     /* 2: draw the client.background, but only for the parts around the window_rect */
     if (con->window != NULL) {
+        /* Clear visible windows before beginning to draw */
+        draw_util_clear_surface(&(con->frame_buffer), (color_t){.red = 0.0, .green = 0.0, .blue = 0.0});
+
         /* top area */
         draw_util_rectangle(&(con->frame_buffer), config.client.background,
                             0, 0, r->width, w->y);
@@ -1529,6 +1532,8 @@ void x_set_i3_atoms(void) {
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, root, A_I3_PID, XCB_ATOM_CARDINAL, 32, 1, &pid);
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, root, A_I3_CONFIG_PATH, A_UTF8_STRING, 8,
                         strlen(current_configpath), current_configpath);
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, root, A_I3_LOG_STREAM_SOCKET_PATH, A_UTF8_STRING, 8,
+                        strlen(current_log_stream_socket_path), current_log_stream_socket_path);
     update_shmlog_atom();
 }
 
