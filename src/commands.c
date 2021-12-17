@@ -1052,6 +1052,14 @@ static Output *user_output_names_find_next(user_output_names_head *names, Output
     Output *target_output = NULL;
     user_output_name *uo;
     TAILQ_FOREACH (uo, names, user_output_names) {
+        if (!target_output) {
+            /* The first available output from the list is used in 2 cases:
+             * 1. When we must wrap around the user list. For example, if user
+             * specifies outputs A B C and C is `current_output`.
+             * 2. When the current output is not in the user list. For example,
+             * user specifies A B C and D is `current_output`. */
+            target_output = get_output_from_string(current_output, uo->name);
+        }
         if (strcasecmp(output_primary_name(current_output), uo->name) == 0) {
             /* The current output is in the user list */
             while (true) {
@@ -1070,14 +1078,6 @@ static Output *user_output_names_find_next(user_output_names_head *names, Output
                 }
             }
             break;
-        }
-        if (!target_output) {
-            /* The first available output from the list is used in 2 cases:
-             * 1. When we must wrap around the user list. For example, if user
-             * specifies outputs A B C and C is `current_output`.
-             * 2. When the current output is not in the user list. For example,
-             * user specifies A B C and D is `current_output`. */
-            target_output = get_output_from_string(current_output, uo->name);
         }
     }
     return target_output;
@@ -2064,20 +2064,40 @@ void cmd_title_format(I3_CMD, const char *format) {
 }
 
 /*
- * Implementation of 'title_window_icon <yes|no>' and 'title_window_icon padding <px>'
+ * Implementation of 'title_window_icon <yes|no|toggle>' and 'title_window_icon padding <px>'
  *
  */
 void cmd_title_window_icon(I3_CMD, const char *enable, int padding) {
-    if (enable != NULL && !boolstr(enable)) {
-        padding = -1;
+    bool is_toggle = false;
+    if (enable != NULL) {
+        if (strcmp(enable, "toggle") == 0) {
+            is_toggle = true;
+        } else if (!boolstr(enable)) {
+            padding = -1;
+        }
     }
     DLOG("setting window_icon=%d\n", padding);
     HANDLE_EMPTY_MATCH;
 
     owindow *current;
     TAILQ_FOREACH (current, &owindows, owindows) {
-        DLOG("setting window_icon for %p / %s\n", current->con, current->con->name);
-        current->con->window_icon_padding = padding;
+        if (is_toggle) {
+            const int current_padding = current->con->window_icon_padding;
+            if (padding > 0) {
+                if (current_padding < 0) {
+                    current->con->window_icon_padding = padding;
+                } else {
+                    /* toggle off, but store padding given */
+                    current->con->window_icon_padding = -(padding + 1);
+                }
+            } else {
+                /* Set to negative of (current value+1) to keep old padding when toggling */
+                current->con->window_icon_padding = -(current_padding + 1);
+            }
+        } else {
+            current->con->window_icon_padding = padding;
+        }
+        DLOG("Set window_icon for %p / %s to %d\n", current->con, current->con->name, current->con->window_icon_padding);
 
         if (current->con->window != NULL) {
             /* Make sure the window title is redrawn immediately. */
